@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ひらがなアプリ（スマホ対応）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+      text-align: center;
+    }
+    .container {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .kana-grid {
+      display: grid;
+      grid-template-columns: repeat(11, auto);
+      gap: 0.2rem;
+    }
+    .voiced-grid, .youon-grid {
+      display: grid;
+      gap: 0.2rem;
+    }
+    .kana-button, .read-button {
+      font-size: 1.5rem;
+      padding: 0.6rem;
+      min-width: 2.8rem;
+      transition: background-color 0.2s;
+    }
+    .kana-button:active {
+      background-color: red;
+      color: white;
+    }
+    .output {
+      font-size: 2rem;
+      margin-top: 1rem;
+      min-height: 2.5rem;
+      border-bottom: 1px solid #ccc;
+      padding: 0.5rem;
+      word-break: break-all;
+    }
+    .controls {
+      margin-top: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+
+    /* スマホ用スタイル */
+    @media (max-width: 768px) {
+      .kana-grid {
+        grid-template-columns: repeat(5, auto);
+      }
+      .kana-button, .read-button {
+        font-size: 1.3rem;
+        padding: 0.5rem;
+        min-width: 2.5rem;
+      }
+      .output {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>ひらがなアプリ</h1>
+
+  <p>読み上げ：
+    <label><input type="radio" name="speak" value="on" checked> ON</label>
+    <label><input type="radio" name="speak" value="off"> OFF</label>
+  </p>
+
+  <div class="container">
+    <div class="youon-grid" id="youonGrid"></div>
+    <div class="voiced-grid" id="voicedGrid"></div>
+    <div class="kana-grid" id="kanaGrid"></div>
+  </div>
+
+  <div class="output" id="output"></div>
+
+  <div class="controls">
+    <button class="read-button" onclick="readKana(false)">読む</button>
+    <button class="read-button" onclick="readKana(true)">ゆっくり読む</button>
+    <button class="read-button" onclick="toggleKanaMode()">ひらがな↔カタカナ切替</button>
+    <button class="read-button" onclick="deleteLastChar()">← 削除</button>
+    <button class="read-button" onclick="clearText()">クリア</button>
+  </div>
+
+  <script>
+    const kanaGridData = [
+      ["っ","わ", "ら", "や", "ま", "は", "な", "た", "さ", "か", "あ"],
+      ["", "",  "り", "",  "み", "ひ", "に", "ち", "し", "き", "い"],
+      ["", "を", "る", "ゆ", "む", "ふ", "ぬ", "つ", "す", "く", "う"],
+      ["", "",  "れ", "",  "め", "へ", "ね", "て", "せ", "け", "え"],
+      ["", "ん", "ろ", "よ", "も", "ほ", "の", "と", "そ", "こ", "お"]
+    ];
+
+    const voicedGridData = [
+      ["ぱ", "ば", "だ", "ざ", "が"],
+      ["ぴ", "び", "ぢ", "じ", "ぎ"],
+      ["ぷ", "ぶ", "づ", "ず", "ぐ"],
+      ["ぺ", "べ", "で", "ぜ", "げ"],
+      ["ぽ", "ぼ", "ど", "ぞ", "ご"]
+    ];
+
+    const youonGridData = [
+      ["ぴゃ","びゃ","ぢゃ","じゃ","ぎゃ","りゃ","みゃ","ひゃ","にゃ","ちゃ","しゃ","きゃ"],
+      ["ぴゅ","びゅ","ぢゅ","じゅ","ぎゅ","りゅ","みゅ","ひゅ","にゅ","ちゅ","しゅ","きゅ"],
+      ["ぴょ","びょ","ぢょ","じょ","ぎょ","りょ","みょ","ひょ","にょ","ちょ","しょ","きょ"]
+    ];
+
+    const hiraToKataMap = {
+      "あ":"ア","い":"イ","う":"ウ","え":"エ","お":"オ",
+      "か":"カ","き":"キ","く":"ク","け":"ケ","こ":"コ",
+      "さ":"サ","し":"シ","す":"ス","せ":"セ","そ":"ソ",
+      "た":"タ","ち":"チ","つ":"ツ","て":"テ","と":"ト",
+      "な":"ナ","に":"ニ","ぬ":"ヌ","ね":"ネ","の":"ノ",
+      "は":"ハ","ひ":"ヒ","ふ":"フ","へ":"ヘ","ほ":"ホ",
+      "ま":"マ","み":"ミ","む":"ム","め":"メ","も":"モ",
+      "や":"ヤ","ゆ":"ユ","よ":"ヨ",
+      "ら":"ラ","り":"リ","る":"ル","れ":"レ","ろ":"ロ",
+      "わ":"ワ","を":"ヲ","ん":"ン","っ":"ッ",
+      "が":"ガ","ぎ":"ギ","ぐ":"グ","げ":"ゲ","ご":"ゴ",
+      "ざ":"ザ","じ":"ジ","ず":"ズ","ぜ":"ゼ","ぞ":"ゾ",
+      "だ":"ダ","ぢ":"ヂ","づ":"ヅ","で":"デ","ど":"ド",
+      "ば":"バ","び":"ビ","ぶ":"ブ","べ":"ベ","ぼ":"ボ",
+      "ぱ":"パ","ぴ":"ピ","ぷ":"プ","ぺ":"ペ","ぽ":"ポ",
+      "ぴゃ":"ピャ","ぴゅ":"ピュ","ぴょ":"ピョ",
+      "びゃ":"ビャ","びゅ":"ビュ","びょ":"ビョ",
+      "ぢゃ":"ヂャ","ぢゅ":"ヂュ","ぢょ":"ヂョ",
+      "じゃ":"ジャ","じゅ":"ジュ","じょ":"ジョ",
+      "ぎゃ":"ギャ","ぎゅ":"ギュ","ぎょ":"ギョ",
+      "りゃ":"リャ","りゅ":"リュ","りょ":"リョ",
+      "みゃ":"ミャ","みゅ":"ミュ","みょ":"ミョ",
+      "ひゃ":"ヒャ","ひゅ":"ヒュ","ひょ":"ヒョ",
+      "にゃ":"ニャ","にゅ":"ニュ","にょ":"ニョ",
+      "ちゃ":"チャ","ちゅ":"チュ","ちょ":"チョ",
+      "しゃ":"シャ","しゅ":"シュ","しょ":"ショ",
+      "きゃ":"キャ","きゅ":"キュ","きょ":"キョ"
+    };
+
+    const kataToHiraMap = Object.fromEntries(
+      Object.entries(hiraToKataMap).map(([h, k]) => [k, h])
+    );
+
+    const kanaGrid = document.getElementById("kanaGrid");
+    const voicedGrid = document.getElementById("voicedGrid");
+    const youonGrid = document.getElementById("youonGrid");
+    const output = document.getElementById("output");
+
+    let currentText = "";
+    let kanaMode = "hira";
+    let buttonRefs = [];
+
+    function createButton(char) {
+      const button = document.createElement("button");
+      button.className = "kana-button";
+      button.textContent = char;
+      button.disabled = char === "";
+      if (char !== "") {
+        button.addEventListener("click", () => {
+          currentText += button.textContent;
+          output.textContent = currentText;
+          if (isSpeakingEnabled()) {
+            const utter = new SpeechSynthesisUtterance(button.textContent);
+            utter.lang = "ja-JP";
+            speechSynthesis.speak(utter);
+          }
+        });
+        buttonRefs.push(button);
+      }
+      return button;
+    }
+
+    kanaGridData.forEach(row => row.forEach(char => kanaGrid.appendChild(createButton(char))));
+    voicedGridData.forEach(row => {
+      const rowDiv = document.createElement("div");
+      row.forEach(char => rowDiv.appendChild(createButton(char)));
+      voicedGrid.appendChild(rowDiv);
+    });
+    youonGridData.forEach(row => {
+      const rowDiv = document.createElement("div");
+      row.forEach(char => rowDiv.appendChild(createButton(char)));
+      youonGrid.appendChild(rowDiv);
+    });
+
+    function toggleKanaMode() {
+      kanaMode = kanaMode === "hira" ? "kata" : "hira";
+      buttonRefs.forEach(btn => {
+        const ch = btn.textContent;
+        btn.textContent = kanaMode === "kata"
+          ? hiraToKataMap[ch] || ch
+          : kataToHiraMap[ch] || ch;
+      });
+    }
+
+    function isSpeakingEnabled() {
+      return document.querySelector('input[name="speak"]:checked').value === "on";
+    }
+
+    function deleteLastChar() {
+      currentText = currentText.slice(0, -1);
+      output.textContent = currentText;
+    }
+
+    function clearText() {
+      currentText = "";
+      output.textContent = "";
+    }
+
+    function readKana(slow = false) {
+      if (currentText !== "") {
+        const utter = new SpeechSynthesisUtterance(currentText);
+        utter.lang = "ja-JP";
+        utter.rate = slow ? 0.3 : 1.0;
+        speechSynthesis.speak(utter);
+      }
+    }
+  </script>
+</body>
+</html>
