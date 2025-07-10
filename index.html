@@ -1,34 +1,50 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ひらがなアプリ（スマホ対応）</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ひらがなアプリ（1画面完結）</title>
   <style>
-    body {
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
       font-family: sans-serif;
-      padding: 1rem;
-      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    h1 {
+      font-size: 2.5vh;
+      margin: 0.5vh;
     }
     .container {
       display: flex;
       justify-content: center;
-      gap: 1rem;
+      align-items: flex-start;
+      gap: 0.5vw;
       flex-wrap: wrap;
+      max-width: 100vw;
+      overflow: hidden;
     }
+    .kana-grid, .voiced-grid, .youon-grid {
+  display: grid;
+  gap: 0.2vh;
+  grid-template-columns: repeat(6, 1fr);
+}
     .kana-grid {
-      display: grid;
-      grid-template-columns: repeat(11, auto);
-      gap: 0.2rem;
+      grid-template-columns: repeat(11, 1fr);
     }
-    .voiced-grid, .youon-grid {
-      display: grid;
-      gap: 0.2rem;
+    .voiced-grid {
+      grid-template-columns: repeat(5, 1fr);
     }
     .kana-button, .read-button {
-      font-size: 1.5rem;
-      padding: 0.6rem;
-      min-width: 2.8rem;
+      font-size: 1.8vh;
+      padding: 0.5vh 0.5vw;
+      min-width: 2.5vh;
+      min-height: 3vh;
       transition: background-color 0.2s;
     }
     .kana-button:active {
@@ -36,59 +52,47 @@
       color: white;
     }
     .output {
-      font-size: 2rem;
-      margin-top: 1rem;
-      min-height: 2.5rem;
+      font-size: 2vh;
+      margin: 1vh 0;
+      height: 3vh;
       border-bottom: 1px solid #ccc;
-      padding: 0.5rem;
-      word-break: break-all;
+      width: 90%;
+      text-align: center;
+      overflow-wrap: break-word;
     }
     .controls {
-      margin-top: 1rem;
       display: flex;
+      gap: 0.5vw;
       flex-wrap: wrap;
-      gap: 0.5rem;
       justify-content: center;
+      margin-bottom: 1vh;
     }
-
-    /* スマホ用スタイル */
-    @media (max-width: 768px) {
+    @media (orientation: portrait) {
       .kana-grid {
-        grid-template-columns: repeat(5, auto);
-      }
-      .kana-button, .read-button {
-        font-size: 1.3rem;
-        padding: 0.5rem;
-        min-width: 2.5rem;
-      }
-      .output {
-        font-size: 1.5rem;
+        grid-template-columns: repeat(5, 1fr);
       }
     }
   </style>
 </head>
 <body>
   <h1>ひらがなアプリ</h1>
-
-  <p>読み上げ：
+  <div>
+    読み上げ：
     <label><input type="radio" name="speak" value="on" checked> ON</label>
     <label><input type="radio" name="speak" value="off"> OFF</label>
-  </p>
-
-  <div class="container">
-    <div class="youon-grid" id="youonGrid"></div>
-    <div class="voiced-grid" id="voicedGrid"></div>
-    <div class="kana-grid" id="kanaGrid"></div>
   </div>
-
   <div class="output" id="output"></div>
-
   <div class="controls">
     <button class="read-button" onclick="readKana(false)">読む</button>
     <button class="read-button" onclick="readKana(true)">ゆっくり読む</button>
     <button class="read-button" onclick="toggleKanaMode()">ひらがな↔カタカナ切替</button>
     <button class="read-button" onclick="deleteLastChar()">← 削除</button>
     <button class="read-button" onclick="clearText()">クリア</button>
+  </div>
+  <div class="container">
+    <div class="youon-grid" id="youonGrid"></div>
+    <div class="voiced-grid" id="voicedGrid"></div>
+    <div class="kana-grid" id="kanaGrid"></div>
   </div>
 
   <script>
@@ -109,9 +113,12 @@
     ];
 
     const youonGridData = [
-      ["ぴゃ","びゃ","ぢゃ","じゃ","ぎゃ","りゃ","みゃ","ひゃ","にゃ","ちゃ","しゃ","きゃ"],
-      ["ぴゅ","びゅ","ぢゅ","じゅ","ぎゅ","りゅ","みゅ","ひゅ","にゅ","ちゅ","しゅ","きゅ"],
-      ["ぴょ","びょ","ぢょ","じょ","ぎょ","りょ","みょ","ひょ","にょ","ちょ","しょ","きょ"]
+        ["ぢゃ", "ぎゃ", "りゃ", "ひゃ", "ちゃ", "きゃ"],
+  ["ぢゅ", "ぎゅ", "りゅ", "ひゅ", "ちゅ", "きゅ"],
+  ["ぢょ", "ぎょ", "りょ", "ひょ", "ちょ", "きょ"],
+  ["びゃ", "じゃ", "ぴゃ", "みゃ", "にゃ", "しゃ"],
+  ["びゅ", "じゅ", "ぴゅ", "みゅ", "にゅ", "しゅ"],
+  ["びょ", "じょ", "ぴょ", "みょ", "にょ", "しょ"]
     ];
 
     const hiraToKataMap = {
@@ -179,14 +186,10 @@
 
     kanaGridData.forEach(row => row.forEach(char => kanaGrid.appendChild(createButton(char))));
     voicedGridData.forEach(row => {
-      const rowDiv = document.createElement("div");
-      row.forEach(char => rowDiv.appendChild(createButton(char)));
-      voicedGrid.appendChild(rowDiv);
+      row.forEach(char => voicedGrid.appendChild(createButton(char)));
     });
     youonGridData.forEach(row => {
-      const rowDiv = document.createElement("div");
-      row.forEach(char => rowDiv.appendChild(createButton(char)));
-      youonGrid.appendChild(rowDiv);
+      row.forEach(char => youonGrid.appendChild(createButton(char)));
     });
 
     function toggleKanaMode() {
