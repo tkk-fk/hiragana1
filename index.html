@@ -1,126 +1,132 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ひらがなアプリ（1画面完結）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ひらがなアプリ（固定11列 × 2 面 / UDフォント＋色分け）</title>
+  <!-- UDフォント（BIZ UDP Gothic） -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDP+Gothic&display=swap">
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
+    :root{
+      --cell: min(7vmin, 56px);
+      --gap: .6vmin;
+      --radius: 12px;
     }
-    h1 {
-      font-size: 2.5vh;
-      margin: 0.5vh;
+    html, body{
+      height:100%; margin:0; padding:0;
+      font-family: "BIZ UDP Gothic", system-ui, -apple-system, "Noto Sans JP", sans-serif;
+      background:#fff; color:#111; -webkit-tap-highlight-color: transparent;
     }
-    .container {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      gap: 0.5vw;
-      flex-wrap: wrap;
-      max-width: 100vw;
-      overflow: hidden;
+    header{ display:flex; gap:.8rem; justify-content:center; align-items:center; flex-wrap:wrap; padding:.6rem .8rem; }
+    h1{ margin:0; font-size:clamp(14px,2.2vmin,20px); }
+    .output{
+      width:min(92vw,1200px); margin:.4rem auto .2rem; min-height:2.2em; text-align:center;
+      border-bottom:1px solid #e6e6e6; font-size:clamp(14px,2.2vmin,22px); padding:.4rem .6rem; word-break:break-word;
     }
-    .kana-grid, .voiced-grid, .youon-grid {
-  display: grid;
-  gap: 0.2vh;
-  grid-template-columns: repeat(6, 1fr);
-}
-    .kana-grid {
-      grid-template-columns: repeat(11, 1fr);
+    .controls{ width:min(92vw,1200px); margin:.4rem auto .8rem; display:flex; flex-wrap:wrap; gap:.4rem; justify-content:center; }
+    .btn{ font-size:clamp(12px,1.9vmin,18px); padding:.5em .8em; border:1px solid #ddd; background:#f7f7f7; border-radius:var(--radius); cursor:pointer; }
+    .btn:active{ background:#e31; color:#fff; border-color:#e31; }
+
+    /* ===== 盤面：左右2カラム（どちらも11列） ===== */
+    .stage{
+      width:min(96vw, 1300px); margin:0 auto 1rem;
+      display:grid; grid-template-columns:auto auto; gap:1.2vmin; align-items:start; justify-content:center;
     }
-    .voiced-grid {
-      grid-template-columns: repeat(5, 1fr);
+    .panel{ display:grid; gap:1.2vmin; }
+
+    .grid{ display:grid; gap:var(--gap); }
+    .grid .kana-button{
+      width:var(--cell); height:var(--cell); display:grid; place-items:center;
+      font-size:clamp(12px, 2.0vmin, 18px);
+      border-width:2px; border-style:solid; border-radius:var(--radius);
+      cursor:pointer; transition:background-color .15s ease, filter .15s ease;
     }
-    .kana-button, .read-button {
-      font-size: 1.8vh;
-      padding: 0.5vh 0.5vw;
-      min-width: 2.5vh;
-      min-height: 3vh;
-      transition: background-color 0.2s;
+    .grid .kana-button:disabled{ visibility:hidden; }
+    .grid .kana-button:active{ filter:brightness(0.95); }
+
+    .kana-grid{ grid-template-columns: repeat(11, var(--cell)); }
+    .right-grid{ grid-template-columns: repeat(11, var(--cell)); }
+
+    /* ===== 色分け（詳細度UPで確実に反映） ===== */
+    .grid .kana-button.btn-kana{
+      background:#ffe6f0; border-color:#ff99bb; color:#660022; /* 五十音：薄ピンク */
     }
-    .kana-button:active {
-      background-color: red;
-      color: white;
+    .grid .kana-button.btn-daku{
+      background:#fff9cc; border-color:#ffcc66; color:#4a2a00; /* 濁音：薄黄色 */
     }
-    .output {
-      font-size: 2vh;
-      margin: 1vh 0;
-      height: 3vh;
-      border-bottom: 1px solid #ccc;
-      width: 90%;
-      text-align: center;
-      overflow-wrap: break-word;
+    .grid .kana-button.btn-youon-top{
+      background:#e6f0ff; border-color:#6699ff; color:#002a66; /* 拗音 上3行：薄青 */
     }
-    .controls {
-      display: flex;
-      gap: 0.5vw;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-bottom: 1vh;
-    }
-    @media (orientation: portrait) {
-      .kana-grid {
-        grid-template-columns: repeat(5, 1fr);
-      }
+    .grid .kana-button.btn-youon-bottom{
+      background:#e6ffe6; border-color:#66cc99; color:#003322; /* 拗音 下3行：薄緑 */
     }
   </style>
 </head>
 <body>
-  <h1>ひらがなアプリ</h1>
-  <div>
-    読み上げ：
-    <label><input type="radio" name="speak" value="on" checked> ON</label>
-    <label><input type="radio" name="speak" value="off"> OFF</label>
-  </div>
+  <header>
+    <h1>ひらがなアプリ</h1>
+    <div role="group" aria-label="読み上げ設定">
+      読み上げ：
+      <label><input type="radio" name="speak" value="on" checked> ON</label>
+      <label><input type="radio" name="speak" value="off"> OFF</label>
+    </div>
+  </header>
+
   <div class="output" id="output"></div>
+
   <div class="controls">
-    <button class="read-button" onclick="readKana(false)">読む</button>
-    <button class="read-button" onclick="readKana(true)">ゆっくり読む</button>
-    <button class="read-button" onclick="toggleKanaMode()">ひらがな↔カタカナ切替</button>
-    <button class="read-button" onclick="deleteLastChar()">← 削除</button>
-    <button class="read-button" onclick="clearText()">クリア</button>
+    <button class="btn" id="readBtn">読む</button>
+    <button class="btn" id="readSlowBtn">ゆっくり読む</button>
+    <button class="btn" id="toggleBtn">ひらがな↔カタカナ切替</button>
+    <button class="btn" id="delBtn">← 削除</button>
+    <button class="btn" id="clearBtn">クリア</button>
+    <button class="btn" id="fullscreenBtn">横向きで全画面</button>
   </div>
-  <div class="container">
-    <div class="youon-grid" id="youonGrid"></div>
-    <div class="voiced-grid" id="voicedGrid"></div>
-    <div class="kana-grid" id="kanaGrid"></div>
+
+  <!-- 左＝拗音+濁音（rightGrid）／右＝五十音（kanaGrid） -->
+  <div class="stage">
+    <div class="panel">
+      <div class="grid right-grid" id="rightGrid"></div>
+    </div>
+    <div class="panel">
+      <div class="grid kana-grid" id="kanaGrid"></div>
+    </div>
   </div>
 
   <script>
+    // ===== 五十音（右：11列×5行）=====
     const kanaGridData = [
-      ["っ","わ", "ら", "や", "ま", "は", "な", "た", "さ", "か", "あ"],
-      ["", "",  "り", "",  "み", "ひ", "に", "ち", "し", "き", "い"],
-      ["", "を", "る", "ゆ", "む", "ふ", "ぬ", "つ", "す", "く", "う"],
-      ["", "",  "れ", "",  "め", "へ", "ね", "て", "せ", "け", "え"],
-      ["", "ん", "ろ", "よ", "も", "ほ", "の", "と", "そ", "こ", "お"]
+      ["っ","わ","ら","や","ま","は","な","た","さ","か","あ"],
+      ["",  "","り","",  "み","ひ","に","ち","し","き","い"],
+      ["ー","を","る","ゆ","む","ふ","ぬ","つ","す","く","う"],      
+      ["",  "","れ","",  "め","へ","ね","て","せ","け","え"],
+      ["",  "ん","ろ","よ","も","ほ","の","と","そ","こ","お"]
     ];
 
-    const voicedGridData = [
-      ["ぱ", "ば", "だ", "ざ", "が"],
-      ["ぴ", "び", "ぢ", "じ", "ぎ"],
-      ["ぷ", "ぶ", "づ", "ず", "ぐ"],
-      ["ぺ", "べ", "で", "ぜ", "げ"],
-      ["ぽ", "ぼ", "ど", "ぞ", "ご"]
+    // ===== 拗音（6列×6行）=====
+    const youon6x6 = [
+      ["ぢゃ","ぎゃ","りゃ","ひゃ","ちゃ","きゃ"],
+      ["ぢゅ","ぎゅ","りゅ","ひゅ","ちゅ","きゅ"],
+      ["ぢょ","ぎょ","りょ","ひょ","ちょ","きょ"],
+      ["びゃ","じゃ","ぴゃ","みゃ","にゃ","しゃ"],
+      ["びゅ","じゅ","ぴゅ","みゅ","にゅ","しゅ"],
+      ["びょ","じょ","ぴょ","みょ","にょ","しょ"]
     ];
 
-    const youonGridData = [
-        ["ぢゃ", "ぎゃ", "りゃ", "ひゃ", "ちゃ", "きゃ"],
-  ["ぢゅ", "ぎゅ", "りゅ", "ひゅ", "ちゅ", "きゅ"],
-  ["ぢょ", "ぎょ", "りょ", "ひょ", "ちょ", "きょ"],
-  ["びゃ", "じゃ", "ぴゃ", "みゃ", "にゃ", "しゃ"],
-  ["びゅ", "じゅ", "ぴゅ", "みゅ", "にゅ", "しゅ"],
-  ["びょ", "じょ", "ぴょ", "みょ", "にょ", "しょ"]
+    // ===== 濁音・半濁音（5列×5行）→高さ合わせで空行を足して6行化 =====
+    const daku5x5 = [
+      ["ぱ","ば","だ","ざ","が"],
+      ["ぴ","び","ぢ","じ","ぎ"],
+      ["ぷ","ぶ","づ","ず","ぐ"],
+      ["ぺ","べ","で","ぜ","げ"],
+      ["ぽ","ぼ","ど","ぞ","ご"]
     ];
+    while (daku5x5.length < 6) daku5x5.push(["","","","",""]); // 6行目の空行
 
+    // ===== 左面（rightGrid）= 拗音6列 + 濁音5列 を横結合（11列） =====
+    const right11Cols = youon6x6.map((row, i) => [...row, ...daku5x5[i]]);
+
+    // ===== ひら↔カタ完全マッピング =====
     const hiraToKataMap = {
       "あ":"ア","い":"イ","う":"ウ","え":"エ","お":"オ",
       "か":"カ","き":"キ","く":"ク","け":"ケ","こ":"コ",
@@ -150,80 +156,107 @@
       "しゃ":"シャ","しゅ":"シュ","しょ":"ショ",
       "きゃ":"キャ","きゅ":"キュ","きょ":"キョ"
     };
+    const kataToHiraMap = Object.fromEntries(Object.entries(hiraToKataMap).map(([h,k])=>[k,h]));
 
-    const kataToHiraMap = Object.fromEntries(
-      Object.entries(hiraToKataMap).map(([h, k]) => [k, h])
-    );
-
+    // ===== 要素参照 =====
     const kanaGrid = document.getElementById("kanaGrid");
-    const voicedGrid = document.getElementById("voicedGrid");
-    const youonGrid = document.getElementById("youonGrid");
+    const rightGrid = document.getElementById("rightGrid");
     const output = document.getElementById("output");
+    const readBtn = document.getElementById("readBtn");
+    const readSlowBtn = document.getElementById("readSlowBtn");
+    const toggleBtn = document.getElementById("toggleBtn");
+    const delBtn = document.getElementById("delBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
 
+    // ===== 状態 =====
     let currentText = "";
     let kanaMode = "hira";
-    let buttonRefs = [];
+    const buttonRefs = [];
 
-    function createButton(char) {
-      const button = document.createElement("button");
-      button.className = "kana-button";
-      button.textContent = char;
-      button.disabled = char === "";
-      if (char !== "") {
-        button.addEventListener("click", () => {
-          currentText += button.textContent;
+    // ===== 生成（クラス割り当て対応） =====
+    function createButton(char, extraClass=""){
+      const btn = document.createElement("button");
+      btn.className = `kana-button ${extraClass}`.trim();
+      btn.textContent = char;
+      btn.disabled = !char;
+      if(char){
+        btn.addEventListener("click", ()=>{
+          currentText += btn.textContent;
           output.textContent = currentText;
-          if (isSpeakingEnabled()) {
-            const utter = new SpeechSynthesisUtterance(button.textContent);
-            utter.lang = "ja-JP";
-            speechSynthesis.speak(utter);
+          // 読み上げONのときのみ
+          if(document.querySelector('input[name="speak"]:checked')?.value === "on"){
+            try{ speechSynthesis.cancel(); }catch(_){}
+            const u = new SpeechSynthesisUtterance(btn.textContent);
+            u.lang = "ja-JP";
+            speechSynthesis.speak(u);
           }
-        });
-        buttonRefs.push(button);
+          if(navigator.vibrate) navigator.vibrate(8);
+        }, {passive:true});
+        buttonRefs.push(btn);
       }
-      return button;
+      return btn;
     }
 
-    kanaGridData.forEach(row => row.forEach(char => kanaGrid.appendChild(createButton(char))));
-    voicedGridData.forEach(row => {
-      row.forEach(char => voicedGrid.appendChild(createButton(char)));
-    });
-    youonGridData.forEach(row => {
-      row.forEach(char => youonGrid.appendChild(createButton(char)));
-    });
-
-    function toggleKanaMode() {
-      kanaMode = kanaMode === "hira" ? "kata" : "hira";
-      buttonRefs.forEach(btn => {
-        const ch = btn.textContent;
-        btn.textContent = kanaMode === "kata"
-          ? hiraToKataMap[ch] || ch
-          : kataToHiraMap[ch] || ch;
+    // ===== 描画 =====
+    // 左（rightGrid）：拗音6列＋濁音5列 → 11列（色分けクラス付与）
+    right11Cols.forEach((row, i)=>{
+      row.forEach((char, j)=>{
+        // j: 0..5 = 拗音, 6..10 = 濁音
+        let cls = "";
+        if(j <= 5){ cls = (i < 3) ? "btn-youon-top" : "btn-youon-bottom"; }
+        else{ cls = "btn-daku"; }
+        rightGrid.appendChild(createButton(char, cls));
       });
+    });
+
+    // 右（kanaGrid）：五十音はピンク
+    kanaGridData.forEach(row => row.forEach(ch => kanaGrid.appendChild(createButton(ch, ch ? "btn-kana" : ""))));
+
+    // ===== 文字変換 =====
+    function convertChar(ch, to){
+      return (to === "kata") ? (hiraToKataMap[ch] || ch) : (kataToHiraMap[ch] || ch);
     }
 
-    function isSpeakingEnabled() {
-      return document.querySelector('input[name="speak"]:checked').value === "on";
-    }
-
-    function deleteLastChar() {
-      currentText = currentText.slice(0, -1);
-      output.textContent = currentText;
-    }
-
-    function clearText() {
-      currentText = "";
-      output.textContent = "";
-    }
-
-    function readKana(slow = false) {
-      if (currentText !== "") {
-        const utter = new SpeechSynthesisUtterance(currentText);
-        utter.lang = "ja-JP";
-        utter.rate = slow ? 0.3 : 1.0;
-        speechSynthesis.speak(utter);
+    // ===== 操作 =====
+    toggleBtn.addEventListener("click", ()=>{
+      kanaMode = (kanaMode === "hira") ? "kata" : "hira";
+      buttonRefs.forEach(btn=>{
+        btn.textContent = convertChar(btn.textContent, kanaMode);
+      });
+      if(currentText){
+        currentText = [...currentText].map(c=> convertChar(c, kanaMode)).join("");
+        output.textContent = currentText;
       }
-    }
+    });
+
+    delBtn.addEventListener("click", ()=>{ currentText = currentText.slice(0,-1); output.textContent = currentText; });
+    clearBtn.addEventListener("click", ()=>{ currentText = ""; output.textContent = ""; });
+
+    readBtn.addEventListener("click", ()=>{
+      if(!currentText) return;
+      try{ speechSynthesis.cancel(); }catch(_){}
+      const u = new SpeechSynthesisUtterance(currentText); u.lang = "ja-JP"; u.rate = 1.0; speechSynthesis.speak(u);
+    });
+    readSlowBtn.addEventListener("click", ()=>{
+      if(!currentText) return;
+      try{ speechSynthesis.cancel(); }catch(_){}
+      const u = new SpeechSynthesisUtterance(currentText); u.lang = "ja-JP"; u.rate = 0.3; speechSynthesis.speak(u);
+    });
+
+    copyBtn.addEventListener("click", async ()=>{
+      try{ await navigator.clipboard.writeText(currentText || ""); copyBtn.textContent="コピー✓"; setTimeout(()=>copyBtn.textContent="コピー",900); }
+      catch(_){ alert("コピーできませんでした"); }
+    });
+
+    // 参考：横向きで全画面
+    fullscreenBtn.addEventListener("click", async ()=>{
+      try{
+        if(document.documentElement.requestFullscreen){ await document.documentElement.requestFullscreen(); }
+        if(screen.orientation?.lock){ await screen.orientation.lock("landscape"); }
+      }catch(_){}
+    });
   </script>
 </body>
 </html>
