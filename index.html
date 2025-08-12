@@ -1,90 +1,94 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>ひらがなアプリ（iPad最適化：幅×高さフィット）</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDP+Gothic&display=swap">
-<style>
-  :root{
-    --gap: 0.6vmin;        /* セル間隔（計算はJSでpx化） */
-    --stage-gap: 1.2vmin;  /* 左右グリッドの間隔 */
-    --cell: 48px;          /* JSで上書き（フォールバック） */
-    --radius: 12px;
-  }
-  html, body{
-    height:100%; margin:0; padding:0;
-    font-family:"BIZ UDP Gothic",system-ui,-apple-system,"Noto Sans JP",sans-serif;
-    background:#fff; color:#111; -webkit-tap-highlight-color:transparent;
-    /* 安全域を確保（iOSのノッチ/ホームバー対策） */
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    overflow-x:hidden; /* 横スクロール抑止 */
-  }
-  header{ display:flex; gap:.8rem; justify-content:center; align-items:center; flex-wrap:wrap; padding:.6rem .8rem; }
-  h1{ margin:0; font-size:clamp(14px,2.2vmin,20px); }
-  .output{
-    width:min(92vw,1200px); margin:.4rem auto .2rem; min-height:2.2em; text-align:center;
-    border-bottom:1px solid #e6e6e6; font-size:clamp(14px,2.2vmin,22px); padding:.4rem .6rem; word-break:break-word;
-  }
-  .controls{
-    width:min(92vw,1200px); margin:.4rem auto .8rem;
-    display:flex; flex-wrap:wrap; gap:.4rem; justify-content:center;
-  }
-  .btn{ font-size:clamp(12px,1.9vmin,18px); padding:.5em .8em; border:1px solid #ddd; background:#f7f7f7; border-radius:var(--radius); cursor:pointer; }
-  .btn:active{ background:#e31; color:#fff; border-color:#e31; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ひらがなアプリ（横幅自動フィット＋横向きガイド）</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDP+Gothic&display=swap">
+  <style>
+    :root{
+      /* 画面に確実に収めるための計算式（22列＝左11＋右11） */
+      --gap: 0.6vmin;           /* 各グリッドのセル間隔 */
+      --stage-gap: 1.2vmin;     /* 左右グリッドの間隔 */
+      /* 2つの11列グリッド + 20個のセル間ギャップ + 左右の間隔 で算出 */
+      --cell-fit: calc((100vw - var(--stage-gap) - 20 * var(--gap)) / 22);
+      /* セルサイズの上限（大画面では見栄え優先、狭い画面ではfit優先） */
+      --cell: min(56px, 7vmin, var(--cell-fit));
+      --radius: 12px;
+    }
 
-  /* 盤面：100%幅（100vwはiPadで溢れやすい） */
-  .stage{
-    width:100%; margin:0 auto 1rem;
-    display:grid; grid-template-columns:auto auto; gap:var(--stage-gap);
-    align-items:start; justify-content:center; box-sizing:border-box;
-    padding:0 clamp(0px, 2vw, 12px);
-  }
-  .panel{ display:grid; gap:1.2vmin; }
-  .grid{ display:grid; gap:var(--gap); }
-  .grid .kana-button{
-    width:var(--cell); height:var(--cell); display:grid; place-items:center;
-    font-size:clamp(12px, 2.0vmin, 18px);
-    border-width:2px; border-style:solid; border-radius:var(--radius);
-    cursor:pointer; transition:background-color .15s ease, filter .15s ease;
-    box-sizing:border-box;
-  }
-  .grid .kana-button:disabled{ visibility:hidden; }
-  .grid .kana-button:active{ filter:brightness(0.95); }
-  .kana-grid{ grid-template-columns: repeat(11, var(--cell)); }
-  .right-grid{ grid-template-columns: repeat(11, var(--cell)); }
+    html, body{
+      height:100%; margin:0; padding:0;
+      font-family: "BIZ UDP Gothic", system-ui, -apple-system, "Noto Sans JP", sans-serif;
+      background:#fff; color:#111; -webkit-tap-highlight-color: transparent;
+    }
 
-  /* 配色（詳細度UP） */
-  .grid .kana-button.btn-kana{ background:#ffe6f0; border-color:#ff99bb; color:#660022; }
-  .grid .kana-button.btn-daku{ background:#fff9cc; border-color:#ffcc66; color:#4a2a00; }
-  .grid .kana-button.btn-youon-top{ background:#e6f0ff; border-color:#6699ff; color:#002a66; }
-  .grid .kana-button.btn-youon-bottom{ background:#e6ffe6; border-color:#66cc99; color:#003322; }
+    header{ display:flex; gap:.8rem; justify-content:center; align-items:center; flex-wrap:wrap; padding:.6rem .8rem; }
+    h1{ margin:0; font-size:clamp(14px,2.2vmin,20px); }
 
-  /* 縦向きガイド */
-  #rotatePrompt{
-    position:fixed; inset:0; display:none;
-    align-items:center; justify-content:center; z-index:9999;
-    background:rgba(255,255,255,.96); text-align:center; padding:2rem;
-  }
-  #rotatePrompt .box{
-    max-width:520px; margin:auto; border:1px solid #eee; border-radius:16px; padding:1.2rem;
-    background:#fff; box-shadow:0 6px 24px rgba(0,0,0,.06); color:#333;
-  }
-  #rotatePrompt h2{ margin:0 0 .6rem; font-size:1.1rem; }
-  #rotatePrompt p{ margin:.4rem 0 .8rem; color:#555; }
-  #rotatePrompt button{ padding:.6rem .9rem; border:1px solid #ddd; border-radius:12px; background:#f7f7f7; cursor:pointer; }
-</style>
+    .output{
+      width:min(92vw,1200px); margin:.4rem auto .2rem; min-height:2.2em; text-align:center;
+      border-bottom:1px solid #e6e6e6; font-size:clamp(14px,2.2vmin,22px); padding:.4rem .6rem; word-break:break-word;
+    }
+
+    .controls{
+      width:min(92vw,1200px); margin:.4rem auto .8rem;
+      display:flex; flex-wrap:wrap; gap:.4rem; justify-content:center;
+    }
+    .btn{ font-size:clamp(12px,1.9vmin,18px); padding:.5em .8em; border:1px solid #ddd; background:#f7f7f7; border-radius:var(--radius); cursor:pointer; }
+    .btn:active{ background:#e31; color:#fff; border-color:#e31; }
+
+    /* ===== 盤面（両グリッドが必ず画面内に収まる） ===== */
+    .stage{
+      width:100vw; margin:0 auto 1rem;
+      display:grid; grid-template-columns:auto auto; gap:var(--stage-gap);
+      align-items:start; justify-content:center; box-sizing:border-box;
+      padding:0 clamp(0px, 2vw, 12px); /* 端末よっては左右に少し余白 */
+    }
+    .panel{ display:grid; gap:1.2vmin; }
+
+    .grid{ display:grid; gap:var(--gap); }
+    .grid .kana-button{
+      width:var(--cell); height:var(--cell); display:grid; place-items:center;
+      font-size:clamp(12px, 2.0vmin, 18px);
+      border-width:2px; border-style:solid; border-radius:var(--radius);
+      cursor:pointer; transition:background-color .15s ease, filter .15s ease;
+      box-sizing:border-box;
+    }
+    .grid .kana-button:disabled{ visibility:hidden; }
+    .grid .kana-button:active{ filter:brightness(0.95); }
+
+    .kana-grid{ grid-template-columns: repeat(11, var(--cell)); }
+    .right-grid{ grid-template-columns: repeat(11, var(--cell)); }
+
+    /* ===== 配色（既存通り） ===== */
+    .grid .kana-button.btn-kana{ background:#ffe6f0; border-color:#ff99bb; color:#660022; }
+    .grid .kana-button.btn-daku{ background:#fff9cc; border-color:#ffcc66; color:#4a2a00; }
+    .grid .kana-button.btn-youon-top{ background:#e6f0ff; border-color:#6699ff; color:#002a66; }
+    .grid .kana-button.btn-youon-bottom{ background:#e6ffe6; border-color:#66cc99; color:#003322; }
+
+    /* ===== 縦向きガイド（ロックできない端末向けの案内） ===== */
+    #rotatePrompt{
+      position:fixed; inset:0; display:none;
+      align-items:center; justify-content:center; z-index:9999;
+      background:rgba(255,255,255,.96); text-align:center; padding:2rem;
+    }
+    #rotatePrompt .box{
+      max-width:520px; margin:auto; border:1px solid #eee; border-radius:16px; padding:1.2rem;
+      background:#fff; box-shadow:0 6px 24px rgba(0,0,0,.06); color:#333;
+    }
+    #rotatePrompt h2{ margin:0 0 .6rem; font-size:1.1rem; }
+    #rotatePrompt p{ margin:.4rem 0 .8rem; color:#555; }
+    #rotatePrompt button{ padding:.6rem .9rem; border:1px solid #ddd; border-radius:12px; background:#f7f7f7; cursor:pointer; }
+  </style>
 </head>
 <body>
   <div id="rotatePrompt" aria-live="polite" role="dialog">
     <div class="box">
       <h2>横向きにしてください</h2>
-      <p>横向きで最適表示になります。端末が対応していれば「横向きで全画面」で固定できます。</p>
+      <p>このアプリは横向きで見やすくなるよう最適化されています。端末が対応していれば「横向きで全画面」を押すと固定できます。</p>
       <button id="goFullscreenBtn">横向きで全画面にする</button>
-      <p style="font-size:.9em; color:#888; margin-top:.8rem;">※iOSなど一部端末では固定不可</p>
+      <p style="font-size:.9em; color:#888; margin-top:.8rem;">※一部の端末（iOS Safariなど）では固定できないことがあります</p>
     </div>
   </div>
 
@@ -110,7 +114,7 @@
   </div>
 
   <!-- 左＝拗音+濁音（rightGrid）／右＝五十音（kanaGrid） -->
-  <div class="stage" id="stage">
+  <div class="stage">
     <div class="panel">
       <div class="grid right-grid" id="rightGrid"></div>
     </div>
@@ -119,219 +123,181 @@
     </div>
   </div>
 
-<script>
-  /* ===== データ ===== */
-  const kanaGridData = [
-    ["っ","わ","ら","や","ま","は","な","た","さ","か","あ"],
-    ["",  "","り","",  "み","ひ","に","ち","し","き","い"],
-    ["",  "ー","を","ゆ","む","ふ","ぬ","つ","す","く","う"],
-    ["",  "","れ","",  "め","へ","ね","て","せ","け","え"],
-    ["",  "ん","ろ","よ","も","ほ","の","と","そ","こ","お"]
-  ];
-  const youon6x6 = [
-    ["ぢゃ","ぎゃ","りゃ","ひゃ","ちゃ","きゃ"],
-    ["ぢゅ","ぎゅ","りゅ","ひゅ","ちゅ","きゅ"],
-    ["ぢょ","ぎょ","りょ","ひょ","ちょ","きょ"],
-    ["びゃ","じゃ","ぴゃ","みゃ","にゃ","しゃ"],
-    ["びゅ","じゅ","ぴゅ","みゅ","にゅ","しゅ"],
-    ["びょ","じょ","ぴょ","みょ","にょ","しょ"]
-  ];
-  const daku5x5 = [
-    ["ぱ","ば","だ","ざ","が"],
-    ["ぴ","び","ぢ","じ","ぎ"],
-    ["ぷ","ぶ","づ","ず","ぐ"],
-    ["ぺ","べ","で","ぜ","げ"],
-    ["ぽ","ぼ","ど","ぞ","ご"]
-  ];
-  while (daku5x5.length < 6) daku5x5.push(["","","","",""]);
-  const right11Cols = youon6x6.map((row, i) => [...row, ...daku5x5[i]]);
+  <script>
+    /* ===== 五十音（右：11列×5行）===== */
+    const kanaGridData = [
+      ["っ","わ","ら","や","ま","は","な","た","さ","か","あ"],
+      ["",  "","り","",  "み","ひ","に","ち","し","き","い"],
+      ["",  "ー","を","ゆ","む","ふ","ぬ","つ","す","く","う"], /* ← ー を を の左に */
+      ["",  "","れ","",  "め","へ","ね","て","せ","け","え"],
+      ["",  "ん","ろ","よ","も","ほ","の","と","そ","こ","お"]
+    ];
 
-  const hiraToKataMap = {
-    "あ":"ア","い":"イ","う":"ウ","え":"エ","お":"オ",
-    "か":"カ","き":"キ","く":"ク","け":"ケ","こ":"コ",
-    "さ":"サ","し":"シ","す":"ス","せ":"セ","そ":"ソ",
-    "た":"タ","ち":"チ","つ":"ツ","て":"テ","と":"ト",
-    "な":"ナ","に":"ニ","ぬ":"ヌ","ね":"ネ","の":"ノ",
-    "は":"ハ","ひ":"ヒ","ふ":"フ","へ":"ヘ","ほ":"ホ",
-    "ま":"マ","み":"ミ","む":"ム","め":"メ","も":"モ",
-    "や":"ヤ","ゆ":"ユ","よ":"ヨ",
-    "ら":"ラ","り":"リ","る":"ル","れ":"レ","ろ":"ロ",
-    "わ":"ワ","を":"ヲ","ん":"ン","っ":"ッ","ー":"ー",
-    "が":"ガ","ぎ":"ギ","ぐ":"グ","げ":"ゲ","ご":"ゴ",
-    "ざ":"ザ","じ":"ジ","ず":"ズ","ぜ":"ゼ","ぞ":"ゾ",
-    "だ":"ダ","ぢ":"ヂ","づ":"ヅ","で":"デ","ど":"ド",
-    "ば":"バ","び":"ビ","ぶ":"ブ","べ":"ベ","ぼ":"ボ",
-    "ぱ":"パ","ぴ":"ピ","ぷ":"プ","ぺ":"ペ","ぽ":"ポ",
-    "ぴゃ":"ピャ","ぴゅ":"ピュ","ぴょ":"ピョ",
-    "びゃ":"ビャ","びゅ":"ビュ","びょ":"ビョ",
-    "ぢゃ":"ヂャ","ぢゅ":"ヂュ","ぢょ":"ヂョ",
-    "じゃ":"ジャ","じゅ":"ジュ","じょ":"ジョ",
-    "ぎゃ":"ギャ","ぎゅ":"ギュ","ぎょ":"ギョ",
-    "りゃ":"リャ","りゅ":"リュ","りょ":"リョ",
-    "みゃ":"ミャ","みゅ":"ミュ","みょ":"ミョ",
-    "ひゃ":"ヒャ","ひゅ":"ヒュ","ひょ":"ヒョ",
-    "にゃ":"ニャ","にゅ":"ニュ","にょ":"ニョ",
-    "ちゃ":"チャ","ちゅ":"チュ","ちょ":"チョ",
-    "しゃ":"シャ","しゅ":"シュ","しょ":"ショ",
-    "きゃ":"キャ","きゅ":"キュ","きょ":"キョ"
-  };
-  const kataToHiraMap = Object.fromEntries(Object.entries(hiraToKataMap).map(([h,k])=>[k,h]));
+    /* ===== 拗音（6列×6行）===== */
+    const youon6x6 = [
+      ["ぢゃ","ぎゃ","りゃ","ひゃ","ちゃ","きゃ"],
+      ["ぢゅ","ぎゅ","りゅ","ひゅ","ちゅ","きゅ"],
+      ["ぢょ","ぎょ","りょ","ひょ","ちょ","きょ"],
+      ["びゃ","じゃ","ぴゃ","みゃ","にゃ","しゃ"],
+      ["びゅ","じゅ","ぴゅ","みゅ","にゅ","しゅ"],
+      ["びょ","じょ","ぴょ","みょ","にょ","しょ"]
+    ];
 
-  /* ===== 要素 ===== */
-  const stage = document.getElementById('stage');
-  const headerEl = document.querySelector('header');
-  const controlsEl = document.querySelector('.controls');
-  const outputEl = document.getElementById('output');
-  const kanaGrid = document.getElementById("kanaGrid");
-  const rightGrid = document.getElementById("rightGrid");
-  const fullscreenBtn = document.getElementById("fullscreenBtn");
-  const goFullscreenBtn = document.getElementById("goFullscreenBtn");
-  const rotatePrompt = document.getElementById("rotatePrompt");
-  const readBtn = document.getElementById("readBtn");
-  const readSlowBtn = document.getElementById("readSlowBtn");
-  const toggleBtn = document.getElementById("toggleBtn");
-  const delBtn = document.getElementById("delBtn");
-  const clearBtn = document.getElementById("clearBtn");
-  const copyBtn = document.getElementById("copyBtn");
+    /* ===== 濁音・半濁音（5列×5行）→高さ合わせで6行化 ===== */
+    const daku5x5 = [
+      ["ぱ","ば","だ","ざ","が"],
+      ["ぴ","び","ぢ","じ","ぎ"],
+      ["ぷ","ぶ","づ","ず","ぐ"],
+      ["ぺ","べ","で","ぜ","げ"],
+      ["ぽ","ぼ","ど","ぞ","ご"]
+    ];
+    while (daku5x5.length < 6) daku5x5.push(["","","","",""]); // 6行目の空行
 
-  /* ===== 状態 ===== */
-  let currentText = "";
-  let kanaMode = "hira";
-  const buttonRefs = [];
+    /* ===== 左面（右グリッドのDOMに出す用）===== */
+    const right11Cols = youon6x6.map((row, i) => [...row, ...daku5x5[i]]);
 
-  /* ===== ボタン生成 ===== */
-  function createButton(char, extraClass=""){
-    const btn = document.createElement("button");
-    btn.className = `kana-button ${extraClass}`.trim();
-    btn.textContent = char;
-    btn.disabled = !char;
-    if(char){
-      btn.addEventListener("click", ()=>{
-        currentText += btn.textContent;
-        outputEl.textContent = currentText;
-        const speakOn = document.querySelector('input[name="speak"]:checked')?.value === "on";
-        if(speakOn){
-          try{ speechSynthesis.cancel(); }catch(_){}
-          const u = new SpeechSynthesisUtterance(btn.textContent);
-          u.lang = "ja-JP"; speechSynthesis.speak(u);
-        }
-        if(navigator.vibrate) navigator.vibrate(8);
-      }, {passive:true});
-      buttonRefs.push(btn);
+    /* ===== ひら↔カタ完全マッピング ===== */
+    const hiraToKataMap = {
+      "あ":"ア","い":"イ","う":"ウ","え":"エ","お":"オ",
+      "か":"カ","き":"キ","く":"ク","け":"ケ","こ":"コ",
+      "さ":"サ","し":"シ","す":"ス","せ":"セ","そ":"ソ",
+      "た":"タ","ち":"チ","つ":"ツ","て":"テ","と":"ト",
+      "な":"ナ","に":"ニ","ぬ":"ヌ","ね":"ネ","の":"ノ",
+      "は":"ハ","ひ":"ヒ","ふ":"フ","へ":"ヘ","ほ":"ホ",
+      "ま":"マ","み":"ミ","む":"ム","め":"メ","も":"モ",
+      "や":"ヤ","ゆ":"ユ","よ":"ヨ",
+      "ら":"ラ","り":"リ","る":"ル","れ":"レ","ろ":"ロ",
+      "わ":"ワ","を":"ヲ","ん":"ン","っ":"ッ","ー":"ー",
+      "が":"ガ","ぎ":"ギ","ぐ":"グ","げ":"ゲ","ご":"ゴ",
+      "ざ":"ザ","じ":"ジ","ず":"ズ","ぜ":"ゼ","ぞ":"ゾ",
+      "だ":"ダ","ぢ":"ヂ","づ":"ヅ","で":"デ","ど":"ド",
+      "ば":"バ","び":"ビ","ぶ":"ブ","べ":"ベ","ぼ":"ボ",
+      "ぱ":"パ","ぴ":"ピ","ぷ":"プ","ぺ":"ペ","ぽ":"ポ",
+      "ぴゃ":"ピャ","ぴゅ":"ピュ","ぴょ":"ピョ",
+      "びゃ":"ビャ","びゅ":"ビュ","びょ":"ビョ",
+      "ぢゃ":"ヂャ","ぢゅ":"ヂュ","ぢょ":"ヂョ",
+      "じゃ":"ジャ","じゅ":"ジュ","じょ":"ジョ",
+      "ぎゃ":"ギャ","ぎゅ":"ギュ","ぎょ":"ギョ",
+      "りゃ":"リャ","りゅ":"リュ","りょ":"リョ",
+      "みゃ":"ミャ","みゅ":"ミュ","みょ":"ミョ",
+      "ひゃ":"ヒャ","ひゅ":"ヒュ","ひょ":"ヒョ",
+      "にゃ":"ニャ","にゅ":"ニュ","にょ":"ニョ",
+      "ちゃ":"チャ","ちゅ":"チュ","ちょ":"チョ",
+      "しゃ":"シャ","しゅ":"シュ","しょ":"ショ",
+      "きゃ":"キャ","きゅ":"キュ","きょ":"キョ"
+    };
+    const kataToHiraMap = Object.fromEntries(Object.entries(hiraToKataMap).map(([h,k])=>[k,h]));
+
+    /* ===== 要素参照 ===== */
+    const kanaGrid = document.getElementById("kanaGrid");
+    const rightGrid = document.getElementById("rightGrid");
+    const output = document.getElementById("output");
+    const readBtn = document.getElementById("readBtn");
+    const readSlowBtn = document.getElementById("readSlowBtn");
+    const toggleBtn = document.getElementById("toggleBtn");
+    const delBtn = document.getElementById("delBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+    const goFullscreenBtn = document.getElementById("goFullscreenBtn");
+    const rotatePrompt = document.getElementById("rotatePrompt");
+
+    /* ===== 状態 ===== */
+    let currentText = "";
+    let kanaMode = "hira";
+    const buttonRefs = [];
+
+    /* ===== 生成 ===== */
+    function createButton(char, extraClass=""){
+      const btn = document.createElement("button");
+      btn.className = `kana-button ${extraClass}`.trim();
+      btn.textContent = char;
+      btn.disabled = !char;
+      if(char){
+        btn.addEventListener("click", ()=>{
+          currentText += btn.textContent;
+          output.textContent = currentText;
+          if(document.querySelector('input[name="speak"]:checked')?.value === "on"){
+            try{ speechSynthesis.cancel(); }catch(_){}
+            const u = new SpeechSynthesisUtterance(btn.textContent);
+            u.lang = "ja-JP";
+            speechSynthesis.speak(u);
+          }
+          if(navigator.vibrate) navigator.vibrate(8);
+        }, {passive:true});
+        buttonRefs.push(btn);
+      }
+      return btn;
     }
-    return btn;
-  }
 
-  /* ===== 描画 ===== */
-  right11Cols.forEach((row, i)=>{
-    row.forEach((char, j)=>{
-      let cls = (j <= 5) ? ((i < 3) ? "btn-youon-top" : "btn-youon-bottom") : "btn-daku";
-      rightGrid.appendChild(createButton(char, cls));
+    /* ===== 描画 ===== */
+    right11Cols.forEach((row, i)=>{
+      row.forEach((char, j)=>{
+        let cls = "";
+        if(j <= 5){ cls = (i < 3) ? "btn-youon-top" : "btn-youon-bottom"; }
+        else{ cls = "btn-daku"; }
+        rightGrid.appendChild(createButton(char, cls));
+      });
     });
-  });
-  kanaGridData.forEach(row => row.forEach(ch => kanaGrid.appendChild(createButton(ch, ch ? "btn-kana" : ""))));
+    kanaGridData.forEach(row => row.forEach(ch => kanaGrid.appendChild(createButton(ch, ch ? "btn-kana" : ""))));
 
-  /* ===== ひら↔カタ切替 ===== */
-  function convertChar(ch, to){
-    return (to === "kata") ? (hiraToKataMap[ch] || ch) : (kataToHiraMap[ch] || ch);
-  }
-  toggleBtn.addEventListener("click", ()=>{
-    kanaMode = (kanaMode === "hira") ? "kata" : "hira";
-    buttonRefs.forEach(btn=>{ btn.textContent = convertChar(btn.textContent, kanaMode); });
-    if(currentText){
-      currentText = [...currentText].map(c=> convertChar(c, kanaMode)).join("");
-      outputEl.textContent = currentText;
+    /* ===== 文字変換 ===== */
+    function convertChar(ch, to){
+      return (to === "kata") ? (hiraToKataMap[ch] || ch) : (kataToHiraMap[ch] || ch);
     }
-  });
+    toggleBtn.addEventListener("click", ()=>{
+      kanaMode = (kanaMode === "hira") ? "kata" : "hira";
+      buttonRefs.forEach(btn=>{ btn.textContent = convertChar(btn.textContent, kanaMode); });
+      if(currentText){
+        currentText = [...currentText].map(c=> convertChar(c, kanaMode)).join("");
+        output.textContent = currentText;
+      }
+    });
 
-  /* ===== 読み上げ・編集 ===== */
-  readBtn.addEventListener("click", ()=> speakNow(1.0));
-  readSlowBtn.addEventListener("click", ()=> speakNow(0.3));
-  function speakNow(rate){
-    if(!currentText) return;
-    try{ speechSynthesis.cancel(); }catch(_){}
-    const u = new SpeechSynthesisUtterance(currentText); u.lang = "ja-JP"; u.rate = rate; speechSynthesis.speak(u);
-  }
-  delBtn.addEventListener("click", ()=>{ currentText = currentText.slice(0,-1); outputEl.textContent = currentText; });
-  clearBtn.addEventListener("click", ()=>{ currentText = ""; outputEl.textContent = ""; });
-  copyBtn.addEventListener("click", async ()=>{
-    try{ await navigator.clipboard.writeText(currentText || ""); copyBtn.textContent="コピー✓"; setTimeout(()=>copyBtn.textContent="コピー",900); }
-    catch(_){ alert("コピーできませんでした"); }
-  });
-
-  /* ===== 全画面（対応端末のみ）＋ガイダンス ===== */
-  function isFullscreenSupported(){
-    return !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
-  }
-  function isOrientationLockSupported(){
-    return !!(screen.orientation && typeof screen.orientation.lock === 'function');
-  }
-  async function enterFullscreen(){
-    const el = document.documentElement;
-    if (el.requestFullscreen) return el.requestFullscreen({ navigationUI:"hide" });
-    if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
-  }
-  async function requestFullscreenAndLock(){
-    try{
-      if (isFullscreenSupported() && !document.fullscreenElement){ await enterFullscreen(); }
-      if (isOrientationLockSupported()){ await screen.orientation.lock('landscape'); }
-    }catch(_){ /* iOSなど不可 */ }
-    finally{ updateRotatePrompt(); adaptFullscreenButton(); fitCells(); }
-  }
-  function isPortrait(){ return window.matchMedia("(orientation: portrait)").matches; }
-  function updateRotatePrompt(){ rotatePrompt.style.display = isPortrait() ? "flex" : "none"; }
-  function adaptFullscreenButton(){
-    if (!isFullscreenSupported()){
-      fullscreenBtn.disabled = true; fullscreenBtn.textContent = "全画面非対応";
-    }else if (!isOrientationLockSupported()){
-      fullscreenBtn.textContent = "横向きで全画面（固定不可の端末）";
-    }else{
-      fullscreenBtn.textContent = "横向きで全画面";
+    /* ===== 編集操作 ===== */
+    delBtn.addEventListener("click", ()=>{ currentText = currentText.slice(0,-1); output.textContent = currentText; });
+    clearBtn.addEventListener("click", ()=>{ currentText = ""; output.textContent = ""; });
+    readBtn.addEventListener("click", ()=> speakNow(1.0));
+    readSlowBtn.addEventListener("click", ()=> speakNow(0.3));
+    function speakNow(rate){
+      if(!currentText) return;
+      try{ speechSynthesis.cancel(); }catch(_){}
+      const u = new SpeechSynthesisUtterance(currentText); u.lang = "ja-JP"; u.rate = rate; speechSynthesis.speak(u);
     }
-  }
-  fullscreenBtn.addEventListener("click", requestFullscreenAndLock);
-  if (goFullscreenBtn) goFullscreenBtn.addEventListener("click", requestFullscreenAndLock);
+    copyBtn.addEventListener("click", async ()=>{
+      try{ await navigator.clipboard.writeText(currentText || ""); copyBtn.textContent="コピー✓"; setTimeout(()=>copyBtn.textContent="コピー",900); }
+      catch(_){ alert("コピーできませんでした"); }
+    });
 
-  /* ===== セルサイズ自動フィット（幅×高さ） ===== */
-  function px(v){ return parseFloat(v) || 0; }
-  function viewportHeight(){
-    // iPad対策：visualViewport優先 → clientHeight → innerHeight
-    const vv = window.visualViewport?.height;
-    const ch = document.documentElement.clientHeight;
-    const ih = window.innerHeight;
-    return Math.min(vv || Infinity, ch || Infinity, ih || Infinity);
-  }
-  function fitCells(){
-    const csRoot = getComputedStyle(document.documentElement);
-    const gap = px(csRoot.getPropertyValue('--gap'));
-    const stageGap = px(csRoot.getPropertyValue('--stage-gap'));
-    const csStage = getComputedStyle(stage);
-    const padH = px(csStage.paddingLeft) + px(csStage.paddingRight);
-    const availW = document.documentElement.clientWidth - padH; // 100%幅ベース
-    // 横：22列 + 各面10ギャップ×2 + 両面の間隔
-    const cellFromWidth = (availW - stageGap - 20 * gap) / 22;
+    /* ===== 横向き全画面（可能な端末のみ）＋回転ガイド ===== */
+    async function requestFullscreenAndLock(){
+      try{
+        if(document.fullscreenElement == null){
+          if(document.documentElement.requestFullscreen){
+            await document.documentElement.requestFullscreen();
+          }
+        }
+        if(screen.orientation && screen.orientation.lock){
+          await screen.orientation.lock("landscape");
+        }
+      }catch(e){
+        // iOS Safariなど、ロック不可の端末ではここに来る
+      }finally{
+        updateRotatePrompt();
+      }
+    }
+    function isPortrait(){ return window.matchMedia("(orientation: portrait)").matches; }
+    function updateRotatePrompt(){
+      // 縦向きのときだけガイド表示
+      rotatePrompt.style.display = isPortrait() ? "flex" : "none";
+    }
 
-    // 縦：ヘッダー/出力/操作分を引いた残りで6行（最大行数）を割る
-    const usedTop = headerEl.offsetHeight + outputEl.offsetHeight + controlsEl.offsetHeight;
-    const bottomReserve = 8; // 余白（iPadで詰まり防止）
-    const availH = Math.max(0, viewportHeight() - usedTop - bottomReserve);
-    const rowsMax = 6;
-    const vGaps = (rowsMax - 1) * gap;
-    const cellFromHeight = (availH - vGaps) / rowsMax;
-
-    const MAX_CELL = 56, MIN_CELL = 24;
-    const cell = Math.max(MIN_CELL, Math.min(MAX_CELL, cellFromWidth, cellFromHeight));
-    document.documentElement.style.setProperty('--cell', `${cell.toFixed(2)}px`);
-  }
-
-  window.addEventListener('resize', fitCells, {passive:true});
-  window.addEventListener('orientationchange', ()=>{ updateRotatePrompt(); fitCells(); }, {passive:true});
-  document.addEventListener('fullscreenchange', ()=>{ updateRotatePrompt(); fitCells(); });
-
-  // 初期化
-  function init(){ adaptFullscreenButton(); updateRotatePrompt(); fitCells(); }
-  if (document.fonts && document.fonts.ready){ document.fonts.ready.then(fitCells); }
-  init();
-</script>
+    fullscreenBtn.addEventListener("click", requestFullscreenAndLock);
+    if(goFullscreenBtn) goFullscreenBtn.addEventListener("click", requestFullscreenAndLock);
+    window.addEventListener("orientationchange", updateRotatePrompt);
+    window.addEventListener("resize", updateRotatePrompt);
+    document.addEventListener("fullscreenchange", updateRotatePrompt);
+    updateRotatePrompt();
+  </script>
 </body>
 </html>
