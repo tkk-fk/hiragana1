@@ -3,34 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>ひらがなアプリ（横幅自動フィット＋横向きガイド）</title>
+  <title>ひらがな、よみます。</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDP+Gothic&display=swap">
   <style>
     :root{
-      /* 画面に確実に収めるための計算式（22列＝左11＋右11） */
-      --gap: 0.6vmin;           /* 各グリッドのセル間隔 */
-      --stage-gap: 1.2vmin;     /* 左右グリッドの間隔 */
-      /* 2つの11列グリッド + 20個のセル間ギャップ + 左右の間隔 で算出 */
-      --cell-fit: calc((100vw - var(--stage-gap) - 20 * var(--gap)) / 22);
-      /* セルサイズの上限（大画面では見栄え優先、狭い画面ではfit優先） */
-      --cell: min(56px, 7vmin, var(--cell-fit));
+      --gap: 0.6vmin;         /* セル間隔（pxに計算して使用） */
+      --stage-gap: 1.2vmin;   /* 左右グリッドの間隔 */
+      --cell: 48px;           /* JSで動的に上書きされます（フォールバック値） */
       --radius: 12px;
     }
-
     html, body{
       height:100%; margin:0; padding:0;
       font-family: "BIZ UDP Gothic", system-ui, -apple-system, "Noto Sans JP", sans-serif;
       background:#fff; color:#111; -webkit-tap-highlight-color: transparent;
     }
-
     header{ display:flex; gap:.8rem; justify-content:center; align-items:center; flex-wrap:wrap; padding:.6rem .8rem; }
     h1{ margin:0; font-size:clamp(14px,2.2vmin,20px); }
-
     .output{
       width:min(92vw,1200px); margin:.4rem auto .2rem; min-height:2.2em; text-align:center;
       border-bottom:1px solid #e6e6e6; font-size:clamp(14px,2.2vmin,22px); padding:.4rem .6rem; word-break:break-word;
     }
-
     .controls{
       width:min(92vw,1200px); margin:.4rem auto .8rem;
       display:flex; flex-wrap:wrap; gap:.4rem; justify-content:center;
@@ -38,15 +30,14 @@
     .btn{ font-size:clamp(12px,1.9vmin,18px); padding:.5em .8em; border:1px solid #ddd; background:#f7f7f7; border-radius:var(--radius); cursor:pointer; }
     .btn:active{ background:#e31; color:#fff; border-color:#e31; }
 
-    /* ===== 盤面（両グリッドが必ず画面内に収まる） ===== */
+    /* ===== 盤面 ===== */
     .stage{
       width:100vw; margin:0 auto 1rem;
       display:grid; grid-template-columns:auto auto; gap:var(--stage-gap);
       align-items:start; justify-content:center; box-sizing:border-box;
-      padding:0 clamp(0px, 2vw, 12px); /* 端末よっては左右に少し余白 */
+      padding:0 clamp(0px, 2vw, 12px);
     }
     .panel{ display:grid; gap:1.2vmin; }
-
     .grid{ display:grid; gap:var(--gap); }
     .grid .kana-button{
       width:var(--cell); height:var(--cell); display:grid; place-items:center;
@@ -57,17 +48,16 @@
     }
     .grid .kana-button:disabled{ visibility:hidden; }
     .grid .kana-button:active{ filter:brightness(0.95); }
-
     .kana-grid{ grid-template-columns: repeat(11, var(--cell)); }
     .right-grid{ grid-template-columns: repeat(11, var(--cell)); }
 
-    /* ===== 配色（既存通り） ===== */
+    /* ===== 配色（詳細度UP） ===== */
     .grid .kana-button.btn-kana{ background:#ffe6f0; border-color:#ff99bb; color:#660022; }
     .grid .kana-button.btn-daku{ background:#fff9cc; border-color:#ffcc66; color:#4a2a00; }
     .grid .kana-button.btn-youon-top{ background:#e6f0ff; border-color:#6699ff; color:#002a66; }
     .grid .kana-button.btn-youon-bottom{ background:#e6ffe6; border-color:#66cc99; color:#003322; }
 
-    /* ===== 縦向きガイド（ロックできない端末向けの案内） ===== */
+    /* ===== 縦向きガイド ===== */
     #rotatePrompt{
       position:fixed; inset:0; display:none;
       align-items:center; justify-content:center; z-index:9999;
@@ -86,14 +76,14 @@
   <div id="rotatePrompt" aria-live="polite" role="dialog">
     <div class="box">
       <h2>横向きにしてください</h2>
-      <p>このアプリは横向きで見やすくなるよう最適化されています。端末が対応していれば「横向きで全画面」を押すと固定できます。</p>
+      <p>横向きで最適表示になります。端末が対応していれば「横向きで全画面」で固定できます。</p>
       <button id="goFullscreenBtn">横向きで全画面にする</button>
-      <p style="font-size:.9em; color:#888; margin-top:.8rem;">※一部の端末（iOS Safariなど）では固定できないことがあります</p>
+      <p style="font-size:.9em; color:#888; margin-top:.8rem;">※iOSなど一部端末では固定不可</p>
     </div>
   </div>
 
   <header>
-    <h1>ひらがなアプリ</h1>
+    <h1>ひらがな、よみます。</h1>
     <div role="group" aria-label="読み上げ設定">
       読み上げ：
       <label><input type="radio" name="speak" value="on" checked> ON</label>
@@ -110,11 +100,11 @@
     <button class="btn" id="delBtn">← 削除</button>
     <button class="btn" id="clearBtn">クリア</button>
     <button class="btn" id="fullscreenBtn">横向きで全画面</button>
-    <button class="btn" id="copyBtn">コピー</button>
+   
   </div>
 
   <!-- 左＝拗音+濁音（rightGrid）／右＝五十音（kanaGrid） -->
-  <div class="stage">
+  <div class="stage" id="stage">
     <div class="panel">
       <div class="grid right-grid" id="rightGrid"></div>
     </div>
@@ -124,16 +114,14 @@
   </div>
 
   <script>
-    /* ===== 五十音（右：11列×5行）===== */
+    /* ===== データ ===== */
     const kanaGridData = [
       ["っ","わ","ら","や","ま","は","な","た","さ","か","あ"],
       ["",  "","り","",  "み","ひ","に","ち","し","き","い"],
-      ["",  "ー","を","ゆ","む","ふ","ぬ","つ","す","く","う"], /* ← ー を を の左に */
+      ["ー","を","ゆ","る","む","ふ","ぬ","つ","す","く","う"], // ← ー を を の左に
       ["",  "","れ","",  "め","へ","ね","て","せ","け","え"],
       ["",  "ん","ろ","よ","も","ほ","の","と","そ","こ","お"]
     ];
-
-    /* ===== 拗音（6列×6行）===== */
     const youon6x6 = [
       ["ぢゃ","ぎゃ","りゃ","ひゃ","ちゃ","きゃ"],
       ["ぢゅ","ぎゅ","りゅ","ひゅ","ちゅ","きゅ"],
@@ -142,8 +130,6 @@
       ["びゅ","じゅ","ぴゅ","みゅ","にゅ","しゅ"],
       ["びょ","じょ","ぴょ","みょ","にょ","しょ"]
     ];
-
-    /* ===== 濁音・半濁音（5列×5行）→高さ合わせで6行化 ===== */
     const daku5x5 = [
       ["ぱ","ば","だ","ざ","が"],
       ["ぴ","び","ぢ","じ","ぎ"],
@@ -151,12 +137,10 @@
       ["ぺ","べ","で","ぜ","げ"],
       ["ぽ","ぼ","ど","ぞ","ご"]
     ];
-    while (daku5x5.length < 6) daku5x5.push(["","","","",""]); // 6行目の空行
+    while (daku5x5.length < 6) daku5x5.push(["","","","",""]); // 6行に
 
-    /* ===== 左面（右グリッドのDOMに出す用）===== */
     const right11Cols = youon6x6.map((row, i) => [...row, ...daku5x5[i]]);
 
-    /* ===== ひら↔カタ完全マッピング ===== */
     const hiraToKataMap = {
       "あ":"ア","い":"イ","う":"ウ","え":"エ","お":"オ",
       "か":"カ","き":"キ","く":"ク","け":"ケ","こ":"コ",
@@ -188,26 +172,29 @@
     };
     const kataToHiraMap = Object.fromEntries(Object.entries(hiraToKataMap).map(([h,k])=>[k,h]));
 
-    /* ===== 要素参照 ===== */
+    /* ===== 要素 ===== */
+    const stage = document.getElementById('stage');
+    const headerEl = document.querySelector('header');
+    const controlsEl = document.querySelector('.controls');
+    const outputEl = document.getElementById('output');
     const kanaGrid = document.getElementById("kanaGrid");
     const rightGrid = document.getElementById("rightGrid");
-    const output = document.getElementById("output");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+    const goFullscreenBtn = document.getElementById("goFullscreenBtn");
+    const rotatePrompt = document.getElementById("rotatePrompt");
     const readBtn = document.getElementById("readBtn");
     const readSlowBtn = document.getElementById("readSlowBtn");
     const toggleBtn = document.getElementById("toggleBtn");
     const delBtn = document.getElementById("delBtn");
     const clearBtn = document.getElementById("clearBtn");
     const copyBtn = document.getElementById("copyBtn");
-    const fullscreenBtn = document.getElementById("fullscreenBtn");
-    const goFullscreenBtn = document.getElementById("goFullscreenBtn");
-    const rotatePrompt = document.getElementById("rotatePrompt");
 
     /* ===== 状態 ===== */
     let currentText = "";
     let kanaMode = "hira";
     const buttonRefs = [];
 
-    /* ===== 生成 ===== */
+    /* ===== ボタン生成（色クラス対応） ===== */
     function createButton(char, extraClass=""){
       const btn = document.createElement("button");
       btn.className = `kana-button ${extraClass}`.trim();
@@ -216,12 +203,12 @@
       if(char){
         btn.addEventListener("click", ()=>{
           currentText += btn.textContent;
-          output.textContent = currentText;
-          if(document.querySelector('input[name="speak"]:checked')?.value === "on"){
+          outputEl.textContent = currentText;
+          const speakOn = document.querySelector('input[name="speak"]:checked')?.value === "on";
+          if(speakOn){
             try{ speechSynthesis.cancel(); }catch(_){}
             const u = new SpeechSynthesisUtterance(btn.textContent);
-            u.lang = "ja-JP";
-            speechSynthesis.speak(u);
+            u.lang = "ja-JP"; speechSynthesis.speak(u);
           }
           if(navigator.vibrate) navigator.vibrate(8);
         }, {passive:true});
@@ -233,15 +220,13 @@
     /* ===== 描画 ===== */
     right11Cols.forEach((row, i)=>{
       row.forEach((char, j)=>{
-        let cls = "";
-        if(j <= 5){ cls = (i < 3) ? "btn-youon-top" : "btn-youon-bottom"; }
-        else{ cls = "btn-daku"; }
+        let cls = (j <= 5) ? ((i < 3) ? "btn-youon-top" : "btn-youon-bottom") : "btn-daku";
         rightGrid.appendChild(createButton(char, cls));
       });
     });
     kanaGridData.forEach(row => row.forEach(ch => kanaGrid.appendChild(createButton(ch, ch ? "btn-kana" : ""))));
 
-    /* ===== 文字変換 ===== */
+    /* ===== ひら↔カタ切替 ===== */
     function convertChar(ch, to){
       return (to === "kata") ? (hiraToKataMap[ch] || ch) : (kataToHiraMap[ch] || ch);
     }
@@ -250,13 +235,11 @@
       buttonRefs.forEach(btn=>{ btn.textContent = convertChar(btn.textContent, kanaMode); });
       if(currentText){
         currentText = [...currentText].map(c=> convertChar(c, kanaMode)).join("");
-        output.textContent = currentText;
+        outputEl.textContent = currentText;
       }
     });
 
     /* ===== 編集操作 ===== */
-    delBtn.addEventListener("click", ()=>{ currentText = currentText.slice(0,-1); output.textContent = currentText; });
-    clearBtn.addEventListener("click", ()=>{ currentText = ""; output.textContent = ""; });
     readBtn.addEventListener("click", ()=> speakNow(1.0));
     readSlowBtn.addEventListener("click", ()=> speakNow(0.3));
     function speakNow(rate){
@@ -264,40 +247,100 @@
       try{ speechSynthesis.cancel(); }catch(_){}
       const u = new SpeechSynthesisUtterance(currentText); u.lang = "ja-JP"; u.rate = rate; speechSynthesis.speak(u);
     }
+    delBtn.addEventListener("click", ()=>{ currentText = currentText.slice(0,-1); outputEl.textContent = currentText; });
+    clearBtn.addEventListener("click", ()=>{ currentText = ""; outputEl.textContent = ""; });
     copyBtn.addEventListener("click", async ()=>{
       try{ await navigator.clipboard.writeText(currentText || ""); copyBtn.textContent="コピー✓"; setTimeout(()=>copyBtn.textContent="コピー",900); }
       catch(_){ alert("コピーできませんでした"); }
     });
 
-    /* ===== 横向き全画面（可能な端末のみ）＋回転ガイド ===== */
+    /* ===== 横向き全画面（対応端末のみ）＋ガイダンス ===== */
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    function isFullscreenSupported(){
+      return !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+    }
+    function isOrientationLockSupported(){
+      return !!(screen.orientation && typeof screen.orientation.lock === 'function');
+    }
+    async function enterFullscreen(){
+      const el = document.documentElement;
+      if (el.requestFullscreen) return el.requestFullscreen({ navigationUI: "hide" });
+      if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
+    }
     async function requestFullscreenAndLock(){
       try{
-        if(document.fullscreenElement == null){
-          if(document.documentElement.requestFullscreen){
-            await document.documentElement.requestFullscreen();
-          }
-        }
-        if(screen.orientation && screen.orientation.lock){
-          await screen.orientation.lock("landscape");
-        }
+        if (isFullscreenSupported() && !document.fullscreenElement){ await enterFullscreen(); }
+        if (isOrientationLockSupported()){ await screen.orientation.lock('landscape'); }
       }catch(e){
-        // iOS Safariなど、ロック不可の端末ではここに来る
+        /* iOSなど不可のときは無視 */
       }finally{
         updateRotatePrompt();
+        adaptFullscreenButton();
+        fitCells(); // 全画面後に再計算
       }
     }
     function isPortrait(){ return window.matchMedia("(orientation: portrait)").matches; }
-    function updateRotatePrompt(){
-      // 縦向きのときだけガイド表示
-      rotatePrompt.style.display = isPortrait() ? "flex" : "none";
+    function updateRotatePrompt(){ rotatePrompt.style.display = isPortrait() ? "flex" : "none"; }
+    function adaptFullscreenButton(){
+      if (!isFullscreenSupported()){
+        fullscreenBtn.disabled = true;
+        fullscreenBtn.textContent = "全画面非対応";
+      }else if (!isOrientationLockSupported()){
+        fullscreenBtn.textContent = "横向きで全画面（固定不可の端末）";
+      }else{
+        fullscreenBtn.textContent = "横向きで全画面";
+      }
+      if (isIOS){
+        fullscreenBtn.title = "iOSでは横向き固定は不可です。端末を横にしてください。";
+      }
+    }
+    fullscreenBtn.addEventListener("click", requestFullscreenAndLock);
+    if (goFullscreenBtn) goFullscreenBtn.addEventListener("click", requestFullscreenAndLock);
+
+    /* ===== セルサイズ自動フィット（幅×高さの両方で計算） ===== */
+    function px(val){ return parseFloat(val) || 0; }
+    function fitCells(){
+      // 1) 幅から算出
+      const csRoot = getComputedStyle(document.documentElement);
+      const gap = px(csRoot.getPropertyValue('--gap'));         // px換算済み
+      const stageGap = px(csRoot.getPropertyValue('--stage-gap'));
+      // stage左右パディングを取得
+      const csStage = getComputedStyle(stage);
+      const padH = px(csStage.paddingLeft) + px(csStage.paddingRight);
+      const availW = window.innerWidth - padH; // 利用可能横幅
+      // 11列×2面＝22列。各面の横ギャップ10個ずつ＝20個。
+      const cellFromWidth = (availW - stageGap - 20 * gap) / 22;
+
+      // 2) 高さから算出（ヘッダー・出力欄・コントロールを引く）
+      const usedTop = headerEl.offsetHeight + outputEl.offsetHeight + controlsEl.offsetHeight;
+      // 下マージンや余白を少し残す
+      const bottomReserve = 12; // px
+      const availH = Math.max(0, window.innerHeight - usedTop - bottomReserve);
+      // 縦行数は左面が最大6行（右面は5行）。縦ギャップは行数-1。
+      const rowsMax = 6;
+      const vGaps = (rowsMax - 1) * gap;
+      const cellFromHeight = (availH - vGaps) / rowsMax;
+
+      // 3) 上限も設定（大画面でデカくなりすぎないよう）
+      const MAX_CELL = 56; // px
+      const cell = Math.max(24, Math.min(MAX_CELL, cellFromWidth, cellFromHeight)); // 最小24pxはタップ最低限
+
+      document.documentElement.style.setProperty('--cell', `${cell.toFixed(2)}px`);
     }
 
-    fullscreenBtn.addEventListener("click", requestFullscreenAndLock);
-    if(goFullscreenBtn) goFullscreenBtn.addEventListener("click", requestFullscreenAndLock);
-    window.addEventListener("orientationchange", updateRotatePrompt);
-    window.addEventListener("resize", updateRotatePrompt);
-    document.addEventListener("fullscreenchange", updateRotatePrompt);
-    updateRotatePrompt();
+    window.addEventListener('resize', fitCells);
+    window.addEventListener('orientationchange', ()=>{ updateRotatePrompt(); fitCells(); });
+    document.addEventListener('fullscreenchange', ()=>{ updateRotatePrompt(); fitCells(); });
+
+    // 初期化
+    function init(){
+      adaptFullscreenButton();
+      updateRotatePrompt();
+      fitCells();
+    }
+    // フォント読み込み後に再計算（念のため）
+    if (document.fonts && document.fonts.ready){ document.fonts.ready.then(fitCells); }
+    init();
   </script>
 </body>
 </html>
